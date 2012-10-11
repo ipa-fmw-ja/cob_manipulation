@@ -4,6 +4,9 @@
 	<node pkg="arm_kinematics_constraint_aware" type="arm_kinematics_constraint_aware" name="cob_arm_kinematics">
 		<rosparam file="$(find cob_manipulation_config)/$(arg robot)/kinematics.yaml"/>
 	</node>
+	<node pkg="arm_kinematics_constraint_aware" type="arm_kinematics_constraint_aware" name="cob_torso_kinematics">
+		<rosparam file="$(find cob_manipulation_config)/$(arg robot)/torso_kinematics.yaml"/>
+	</node>
 <!-- 
 	<node pkg="cob_interpolated_ik_motion_planner" name="cob_interpolated_ik_motion_planner" type="interpolated_ik_motion_planner.py" args="arm">
 		<param name="robot_prefix" value="cob" />
