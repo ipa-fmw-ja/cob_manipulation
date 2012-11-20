@@ -13,7 +13,7 @@ def createObject(shapetype, name, pos, euler, extent):
     s = Shape()
     co.id = name
     co.operation.operation = CollisionObjectOperation.ADD
-    co.header.frame_id = "/arm_7_link";
+    co.header.frame_id = "/sdh_grasp_link";
     #co.header.frame_id = "/base_link";
     co.header.stamp = rospy.Time.now();
     s.type = shapetype
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     pub = rospy.Publisher('/collision_object', CollisionObject)
     pub2 = rospy.Publisher('/attached_collision_object', AttachedCollisionObject)
     rospy.sleep(1.0)
-    checkerboard = createObject(Shape.BOX, "checkerboard", [0.0,0.0,0.19],[0,0,0],[0.05, 0.42, 0.38]) 
+    checkerboard = createObject(Shape.BOX, "checkerboard", [0.0,0.0,0.04],[0,0,0],[0.05, 0.42, 0.38]) 
     pub.publish(checkerboard)
     rospy.sleep(1.0)
     attach_checkerboard = AttachedCollisionObject()
