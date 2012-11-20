@@ -64,6 +64,7 @@ if __name__ == '__main__':
     attach_checkerboard = AttachedCollisionObject()
     attach_checkerboard.object = checkerboard
     attach_checkerboard.link_name = "arm_7_link"
+    attach_checkerboard.touch_links=["arm_7_link","sdh_finger_11_link", "sdh_finger_12_link","sdh_finger_13_link","sdh_finger_21_link", "sdh_finger_22_link","sdh_finger_23_link","sdh_grasp_link","sdh_palm_link", "sdh_tip_link", "sdh_thumb_1_link", "sdh_thumb_2_link","sdh_thumb_3_link"]
     pub2.publish(attach_checkerboard)
     rospy.sleep(1.0)    
     
