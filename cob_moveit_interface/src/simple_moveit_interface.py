@@ -7,9 +7,11 @@ from copy import deepcopy
 
 import rospy
 import tf
-from geometry_msgs.msg import PoseStamped
 from moveit_commander import MoveGroupCommander, PlanningSceneInterface
 
+from geometry_msgs.msg import PoseStamped
+from moveit_msgs.msg import PositionIKRequest
+from moveit_msgs.srv import GetPositionIK
 
 
 
@@ -23,6 +25,8 @@ _mgc_dict_creation_lock = threading.Lock()
 
 _psi = None
 _psi_creation_lock = threading.Lock()
+
+service_proxy = None
 
 def get_transform_listener():
     '''
@@ -86,12 +90,12 @@ def clear_objects():
     psi = get_planning_scene_interface()
     psi.remove_attached_object("arm_7_link")
     psi.remove_world_object("")
-    
+
 def clear_attached_object(object_name):
     psi = get_planning_scene_interface()
     psi.remove_attached_object(link="arm_7_link", name = object_name)
     psi.remove_world_object(object_name)
-    
+
 
 def attach_mesh_to_link(link, name, path):
     psi = get_planning_scene_interface()
@@ -104,6 +108,9 @@ def attach_mesh_to_link(link, name, path):
 def moveit_joint_goal(group, goal, replanning=False):
     mgc = get_move_group_commander(group)
     mgc.allow_replanning(replanning)
+    if type(goal) is dict:
+        mgc.set_joint_value_target(goal)
+        goal=None
     if mgc.go(goal):
         print "Done moving"
         return 'succeeded'
@@ -123,25 +130,66 @@ def moveit_pose_goal(group, ref_frame, goal, replan=False):
     else:
         print "Failed to plan path"
         return 'failed'
-    
-    
+
+
+# ik
+
+
+def moveit_ik(group, goal, ik_link=None, seed=None, timeout=0.5, attempts=1):
+    global service_proxy
+    if service_proxy is None:
+        service_proxy = rospy.ServiceProxy('/compute_ik', GetPositionIK)
+
+    mgc = get_move_group_commander(group)
+    joint_names = mgc.get_joints()
+    if ik_link is None:
+        ik_link = mgc.get_end_effector_link()
+
+    if seed is None:
+        seed = mgc.get_current_joint_values()
+    print seed
+
+    # create and send ik request
+    req = PositionIKRequest()
+    req.group_name = group
+    req.timeout = rospy.Duration(timeout)
+    req.ik_link_name = ik_link
+    req.robot_state.joint_state.position = seed
+    req.robot_state.joint_state.name = joint_names
+    req.pose_stamped = goal
+    req.attempts = 1
+
+    response = service_proxy(req)
+
+    # report sucess or return None on error
+    result = {}
+    if response.error_code.val == response.error_code.SUCCESS:
+        for name, position in zip(list(response.solution.joint_state.name),
+                                  list(response.solution.joint_state.position)):
+            if name in joint_names:
+                result[name]=position
+        return result
+
+    return None
+
+
 
 #this is linear movement
 def moveit_cart_goals(group, ref_frame, goal_list, avoid_collisions=True):
     mgc = get_move_group_commander(group)
-    
+
     mgc.set_pose_reference_frame(ref_frame)
     (traj,frac)  = mgc.compute_cartesian_path(goal_list, 0.01, 4, avoid_collisions)
     print traj,frac
 
     #mgc.execute(traj)
     #print "Done moving"
-    #return 'succeeded'  
-    
+    #return 'succeeded'
+
     if frac == 1.0:
         if mgc.execute(traj):
-		print "Done moving"
-        	return 'succeeded'
+            print "Done moving"
+            return 'succeeded'
 	else:
 		print "Something happened during execution"
 		print 'failed'
@@ -177,7 +225,7 @@ def get_goal_from_server(group, parameter_name):
                 rospy.logerr("parameter %s does not exist on ROS Parameter Server, aborting...",param_string)
                 return None
         joint_names = rospy.get_param(param_string)
-        
+
         # check joint_names parameter
         if not type(joint_names) is list: # check list
                 rospy.logerr("no valid joint_names for %s: not a list, aborting...",group)
@@ -191,7 +239,7 @@ def get_goal_from_server(group, parameter_name):
                     return None
                 else:
                     rospy.logdebug("accepted joint_names for group %s",group)
-        
+
         # get joint values from parameter server
         if type(parameter_name) is str:
             if not rospy.has_param(ns_global_prefix + "/" + group + "/" + parameter_name):
@@ -241,7 +289,7 @@ def get_goal_from_server(group, parameter_name):
                 print "parameter is:",param
                 return None
             rospy.logdebug("accepted value %f for %s",value,group)
-        
+
         return point
 
 
