@@ -147,7 +147,6 @@ def moveit_ik(group, goal, ik_link=None, seed=None, timeout=0.5, attempts=1):
 
     if seed is None:
         seed = mgc.get_current_joint_values()
-    print seed
 
     # create and send ik request
     req = PositionIKRequest()
